@@ -8,8 +8,6 @@ from Map import Map
 from Map import Component
 from Map import Pin
 from Map import Trace
-from Map import Net
-from Map import PseudoPair
 import sys
 import time
 
@@ -20,8 +18,7 @@ LEFT = 3
 
 
 def route(Map, outputFile):
-    component_cushion = 2
-    trace_cushion = 1
+
     '''
     for pin in Map.start_pins:
         #print (pin.pos)
@@ -36,76 +33,60 @@ def route(Map, outputFile):
         print (pin.name, pin.extension)
         #print (pin.pos)
     '''
-    routed_dict = {}
-    routed_amt = 0
-    for net in Map.nets:
-        for pin in net.pins:
-            extendPin(Map, pin, 2)
-            #make routed dictionary
-            routed_dict[pin.component+pin.name] = 0
-        
     
+    for net in Map.nets:
+        for pin in net:
+            extendPin(Map, pin, 2)
+            
+    
+    printMap(Map.space)
+
     #Net pre-processing (determining hub for 3+ nets, net bounding box order.)
-    print (routed_dict)
-    printMap(Map.space)
-    pseudoPairs = orderSets(Map)
+    
+    S = [i[0] for i in Map.nets]
+    T = [i[1] for i in Map.nets]
+
+    #sys.exit(0)
+    S, T = orderSets(Map, S, T)
 
     printMap(Map.space)
 
-    #####################################################
-    # Rotuing process
-    #####################################################
     traces = []
-    routedPairs = []
-    while routed_amt < len(routed_dict):
+    for i, each in enumerate(S):
         WorkMap = makeWorkMap(Map.space)
+
+        sx = S[i].x
+        sy = S[i].y
+        tx = T[i].x
+        ty = T[i].y
         
-        pair = pseudoPairs.pop(0)
-        print ( pair.type, pair.pin.name, pair.terminal.name, pair.pinsInside, pair.netSize)
+        coords = (sx, sy, tx, ty)
         
-        if pair.type == "p2p":
-            
-            sx = pair.pin.x
-            sy = pair.pin.y
-            tx = pair.terminal.x
-            ty = pair.terminal.y
-            
-            coords = (sx, sy, tx, ty)
-        
-            WorkMap[sx][sy] = ' S'
-            WorkMap[tx][ty] = ' T'
+        WorkMap[sx][sy] = ' S'
+        WorkMap[tx][ty] = ' T'
+
+        print ("ADD CUSHION for set ", str(i) )
+        WorkMap = addCushion(Map, 2, WorkMap, i)
+        printMap(WorkMap)
+        print ("ADD TRACE CUSHION for set ", str(i))
+        WorkMap = addTraceCushion(traces, 1, WorkMap, coords)
+        printMap(WorkMap)
+        iFound, WorkMap = bubble(S[i].pos, WorkMap, i)
 
         printMap(WorkMap)
 
-
-        print ("ADD CUSHION for set ", pair.pin.net.name )
-        WorkMap = addCushion(Map, component_cushion, WorkMap, pair.pin.net)
-        printMap(WorkMap)
-        print ("ADD TRACE CUSHION for set ", pair.pin.net.name)
-        WorkMap = addTraceCushion(traces, trace_cushion, WorkMap, coords)
-        printMap(WorkMap)
-        iFound, WorkMap = bubble(pair.pin.pos, WorkMap)
-
-        printMap(WorkMap)
-
-        points = trace(pair.terminal.pos, iFound, WorkMap)
-        #traces list needs more information for being able to remove
-        # parts of traces that are ripped up
+        points = trace(T[i].pos, iFound, WorkMap)
         traces.append(points)
-        drawTrace(points, Map)
+        drawTrace(points, Map, i)
 
         printMap(Map.space)
 
-        sys.exit()
 
     printMap(Map.space)
     printMapFile(Map.space, outputFile)
     
 
-def makeNetQueue(netlist):
-    x= 2
-    
-    
+
 def step(p1, p2):
 
     if p1 < p2:
@@ -143,8 +124,8 @@ def addTraceCushion(traces, cushion, WorkMap, coords):
     return WorkMap
 
 
-def drawTrace(points, Map):
-    i = 0
+def drawTrace(points, Map, i):
+
     id = 0
     while id < len(points) - 1:
         current = points[id]
@@ -158,21 +139,17 @@ def drawTrace(points, Map):
     Map.space[points[id][0]][points[id][1]] = 'S' + str(i + 1)
 
 
-def addCushion(MapInfo, cushion, WorkMap, current_net):
+def addCushion(MapInfo, cushion, WorkMap, i):
     """ Add a cushion to components of a certain amount of millimeters to
         avoid routing too close to components.
 
     MapInfo -- Map class object containing information about components.
     cushion -- int, millimeter amount of cushion to add to components.
     WorkMap -- list (Two-dimensional), array to add cushion to.
-    current_net -- net object currently being routed
 
     WorkMap -- list (Two-dimensional), map space with cushion added to components.
     """
 
-    #Cushion Components
-    '''This might need to only be done once at the beginning of routing process...
-    '''
     for component in MapInfo.components:
         x_left = component.x - cushion
         x_right = component.x + component.x_size + cushion
@@ -183,23 +160,33 @@ def addCushion(MapInfo, cushion, WorkMap, current_net):
             for x in range(x_left, x_right):
                 WorkMap[x][y] = ' o'
 
-    #Cushion Pins
-    for net in MapInfo.nets:
-        
-        if net == current_net:
+
+# Cushioning pins will require information on the pin being currently routed
+# beacuse the cushion should not be added to the pin being routed.\
+
+    for s in MapInfo.start_pins:
+        if s.id == i:
+            position_s = s.pos
+ 
+    for t in MapInfo.terminal_pins:
+        if t.id == i:
+            position_t = t.pos
+ 
+    allpins = MapInfo.terminal_pins + MapInfo.start_pins
+    for pin in allpins:
+ 
+        if pin.pos == position_s or pin.pos == position_t:
             continue
-        
-        for pin in net.pins:
-           
-            x_left = pin.x - 1
-            x_right = pin.x + 1
-            y_top = pin.y - 1
-            y_bottom = pin.y + 1
  
-            for y in range(y_top, y_bottom + 1):
-                for x in range(x_left, x_right + 1):
-                    WorkMap[x][y] = ' o'
+        x_left = pin.x - 1
+        x_right = pin.x + 1
+        y_top = pin.y - 1
+        y_bottom = pin.y + 1
  
+        for y in range(y_top, y_bottom + 1):
+            for x in range(x_left, x_right + 1):
+                WorkMap[x][y] = ' o'
+
     return WorkMap
 
 
@@ -381,75 +368,67 @@ def makeWorkMap(Map):
     return newMap
 
 
-def orderSets(Map):
+def orderSets(Map, S, T):
     """ Order pin pairs for routing using bounding box heuristic. The bounding box
         of a pair counts how many other pins lie within the box made from xS to
         xT and yS to yT. Map.start_pins and Map.terminal_pins are modified
-    
-    Map -- Map type object contatining entire information of routing space, components, pins, nets etc
 
-    pseudoPins -- list containing information on order pins will be routed next.
+    Map -- type must be list (Two-dimensional).
+    S -- list type containing Pin objects of start pins
+    T -- list type containing Pin objects of terminal pins
+
+    S -- list containing start Pin objects after ordering
+    T -- list containing terminal Pin objects after ordering
     """
-    pseudopairs = []        
-    
-    for net in Map.nets:
-        pins = net.pins
-        if len(pins) == 2:
-            
-            bbox_idx = calculatePinsInBBox(net, 0, 1, Map)
-            pseudopair = PseudoPair("p2p",pins[0], pins[1], bbox_idx, net.size)
-            pseudopairs.append(pseudopair)
-            
-        elif len(pins) > 2:
-            for i in range(len(pins)):
-                for j in range(i,len(pins)):
-                    
-                    if pins[i] == pins[j]:
-                        continue
-                    
-                    bbox_idx = calculatePinsInBBox(net, i, j, Map)
-                    pseudopair = PseudoPair("p2p",pins[i], pins[j], bbox_idx, net.size)
-                    pseudopairs.append(pseudopair)
-            
-    for pair in pseudopairs:
-        print (pair.type, pair.pin.name, pair.terminal.name, pair.pinsInside, pair.netSize)
-    pseudopairs.sort(key=lambda bbox : bbox.pinsInside)        
-    for pair in pseudopairs:
-        print (pair.type, pair.pin.name, pair.terminal.name, pair.pinsInside, pair.netSize)
-                   
-    #sys.exit()
-    
-    return pseudopairs
 
-    '''
+    pinsInBox = [0] * len(S)
+    for i in range(len(S)):
+
+        for j in range(len(S) - 1):
+
+            j = (i + j + 1) % len(S)
+
+            xs = S[i].x
+            ys = S[i].y
+            xt = T[i].x
+            yt = T[i].y
+
+            if (S[j].x in range(xs, xt + step(xs, xt), step(xs, xt)) and
+                    S[j].y in range(ys, yt + step(ys, yt), step(ys, yt))):
+                pinsInBox[i] += 1
+
+            if (T[j].x in range(xs, xt + step(xs, xt), step(xs, xt)) and
+                    T[j].y in range(ys, yt + step(ys, yt), step(ys, yt))):
+                pinsInBox[i] += 1
+
+    for idx, p in enumerate(pinsInBox):
+        print("Set "+str(idx) + " has " + str(p) + " pins inside of bounding box")
+
+    # ===========================================================================
+    # Insert Sort, Depending on whteher i want to maintain the pins initial IDs,
+    # The part inside the if clause should change so as to only keep track of
+    # the order and not actually move the pins around
+    # ===========================================================================
+
+    for index in range(len(pinsInBox)):
+        while index > 0:
+            if pinsInBox[index] < pinsInBox[index - 1]:
+
+                pinsInBox[index], pinsInBox[index - 1] = pinsInBox[index - 1], pinsInBox[index]
+
+                S[index], S[index - 1] = S[index - 1], S[index]
+                T[index], T[index - 1] = T[index - 1], T[index]
+
+            index += -1
+
     for i in range(len(S)):
         Map.space[S[i].x][S[i].y] = 'S' + str(i+1)
         S[i].id = i
         Map.space[T[i].x][T[i].y] = 'T' + str(i+1)
         T[i].id = i
-    
-    return S, T
-    '''
-    
-def calculatePinsInBBox(net,p1,p2, Map):
-    
-    bbox_idx = 0
-    p1 = net.pins[p1]
-    p2 = net.pins[p2]
-    
-    for net2 in Map.nets:
-        if net == net2:
-            continue
-        #print ("iter:"+net2.name) 
-        pins2 = net2.pins
 
-        for pin2 in pins2:
+    return S, T
     
-            if (pin2.x in range(p1.x, p2.x + step(p1.x, p2.x), step(p1.x, p2.x)) and
-                    pin2.y in range(p1.y, p2.y + step(p1.y, p2.y), step(p1.y, p2.y))):
-                bbox_idx += 1
-    
-    return bbox_idx
 
 def findPinWall(Map, pin):
     """ Determines where the component a pin is connected to is located in
@@ -535,7 +514,7 @@ def extendPin(Map, pin, e_length):
     pin.extension = e_length
 
 
-def bubble(start, Map):
+def bubble(start, Map, i):
     """ Perform wave propagation portion of Lee Algorithm for routing.
 
     start -- Tuple containing coordinate of start Pin.

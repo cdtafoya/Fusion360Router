@@ -5,7 +5,6 @@ Created on Sep 21, 2017
 '''
 from __future__ import print_function
 import sys
-from email._header_value_parser import Terminal
 
 
 
@@ -22,8 +21,8 @@ class Map(object):
         self.components = components
         self.updateComponents()
 
-        #self.start_pins = [i[0] for i in nets]
-        #self.terminal_pins = [i[1] for i in nets]
+        self.start_pins = [i[0] for i in nets]
+        self.terminal_pins = [i[1] for i in nets]
         #self.updatePins()
         
         self.nets = nets
@@ -70,7 +69,7 @@ class Map(object):
         #allPins = self.start_pins + self.terminal_pins
         for net in self.nets:
             
-            for pin in net.pins:
+            for pin in net:
                 
                 if self.space[pin.x][pin.y] == ' o':
                     raise  ValueError('Pin' +str(pin.name)+ "with position " +str(pin.pos)+
@@ -127,18 +126,15 @@ class Pin(object):
     classdocs
     '''
 
-    
-    def __init__(self,name, net, component, position):
+    def __init__(self, name, position):
         '''
         Constructor
         '''
         self.name = name
-        self.net = net
-        self.component = component
         self.id = 0
         self.extension = 0  # Length of extension from component
         
-        if net == 'GND':
+        if name == 'GND':
             self.pos = None
             self.x = None
             self.y = None 
@@ -170,70 +166,25 @@ class Pin(object):
         self.pos = (self.x, y)
         self.y = y
 
-        
-class Net(object):
-    """Net object composed of pins and traces.
-    
-    pins -- Pin object list of Pins in net
-    
-    """
-       
-    def __init__(self, name):
-        
-        self.name = name  
-        self.pins = []
-        self.traces = None
-        self.bbox = None
-        self.size = 0
-    
-    def addPin(self, pin):
-        
-        pin.net = self
-        self.pins.append(pin)
-        self.size += 1
-        
-    
+
 class Trace(object):
-    """Trace objects repesent the generated connections between routed pins.
-       It is classified as one of two types: 1.principal trace, which connects 
-       either a net of size 2 or could be the main connection made to route
-       a net of 3+. 2. auxiliary trace, which connects a pin to a principal trace
-       in a net of 3+.
-       
-    lines -- line objects that make up the trace.
+    """
     """
     
-    def __init__(self, lines):
+    def __init__(self, points):
         
-        self.lines = lines
+        self.lines = self.findTraceLines(points)
         
-        
-    def addLine(self, points):
-        """Appends a line object to the list of lines that make up the trace.
-           Additionally checks to see if it is in order, that is whether the 
-           lines go from start to finish of the trace.
-           
-        points -- x,y coordinates contained in the line. 
+    def findTraceLines(self, points):
+        """ Define the trace by defining the lines that the points
+            make up. This is done by finding where ever the points
+            change directions.
         """
+        
+        
+         
+        
     
-class PseudoPair(object):
-    """PseudoPair objects can contain references to pins which may correspond to nets of 
-        size 2 or more if they are of type "p2p" pin to pin. They also may be of type
-        "p2n" pin to net. For nets of 3+, pseudoPairs are made according to what might
-        be a good pair to connect initially. 
-        
-    type -- "p2p" pin to pin pair, "p2n" pin to net pair.
-    pin -- reference to pin object being connnected.
-    terminal -- reference either to pin or net being connected
-    pinsInside -- integer amount dentoing pins between pin and terminal.
-    netSize -- integer amount denoting if pin pair is part of net size 2 or 3+.  
-    """
     
-    def __init__(self, type, pin, terminal, pinsInside, netSize):
-        
-        self.type = type
-        self.pin = pin
-        self.terminal = terminal
-        self.pinsInside = pinsInside
-        self.netSize = netSize
-        
+    
+    
