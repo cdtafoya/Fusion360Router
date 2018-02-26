@@ -79,6 +79,7 @@ def route(Map, outputFile):
         printMap(WorkMap)
         
         iFound, WorkMap = bubble(pair, WorkMap)
+        print ("IFOUND: " + str(iFound))
         printMap(WorkMap)
         points = makeTrace(pair, iFound, WorkMap)
         #traces list needs more information for being able to remove
@@ -287,7 +288,7 @@ def setDirection(turnPoint, label, Map):
     """
 
     directions = [0, 1, 2, 3]
-    expectedLabel = (label - 1) % 10
+    expectedLabel = (label - 1)
     tracePoints = []
     linePoints = []
     goalFound = False
@@ -297,10 +298,11 @@ def setDirection(turnPoint, label, Map):
     for dir in directions:
 
         startX, startY = getNextPos(dir, turnPoint, Map)
-        actualLabel = Map[startX][startY][1]
+        actualLabel = Map[startX][startY]
+        #print ("ACTUAL LABEL: " + str(actualLabel), len(actualLabel))
 
-        if Map[startX][startY][0] is not ' ':
-            continue
+        #if Map[startX][startY][0] is not ' ':
+        #    continue
 
         if actualLabel == 'S':
             print ("Goal found in setDirection()")
@@ -353,10 +355,10 @@ def line(dir, current, label, Map):
     #tracePoints.append(current)  # start by adding first point in line
 
     while True:
-        expectedLabel = (label - 1) % 10
+        expectedLabel = (label - 1)
 
         nextX, nextY = getNextPos(dir, current, Map)
-        nextLabel = Map[nextX][nextY][1]
+        nextLabel = Map[nextX][nextY]
 
         if nextLabel is 'S':
             tracePoints.append((nextX, nextY))  # uncomment to include S point
@@ -638,15 +640,15 @@ def bubble(pair, Map):
 
                 x = dir[0]
                 y = dir[1]
+                #print (x, y)
 
                 if x < 0 or x > len(Map) - 1:
                     continue
                 if y < 0 or y > len(Map[0]) - 1:
                     continue
 
-                    print (x, y)
                 if Map[x][y] == ' -':
-                    Map[x][y] = " " + str(iteration)
+                    Map[x][y] = str(iteration)
                     temp.append(dir)
 
                 if Map[x][y] == ' T':
@@ -662,7 +664,7 @@ def bubble(pair, Map):
         workingPoints = temp
         temp = []
 
-        iteration = (iteration + 1) % 10
+        iteration = (iteration + 1)
 
     return iteration_found_at, Map
 
@@ -677,9 +679,9 @@ def printMap(Map):
     print(' =  ', end='')
     for i in range(0, len(Map)):
         if i < 10:
-            print (' ' + str(i), end='')
+            print ('  ' + str(i), end='')
         else:
-            print(i, end='')
+            print(' '+str(i), end='')
     print()
 
     # Print extra line
@@ -694,7 +696,9 @@ def printMap(Map):
         else:
             print (str(x) + '  ', end='')
         for y in range(len(Map)):
-            if len(Map[y][x]) == 2:
+            if len(Map[y][x]) == 1:
+                space = '  '
+            elif len(Map[y][x]) == 2:
                 space = ' '
             else:
                 space = ''

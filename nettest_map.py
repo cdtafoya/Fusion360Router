@@ -29,9 +29,9 @@ net_2.addPin(Pin('C2','N$2','Y',(62,15)))
 net_3.addPin(Pin('A3','N$3','Z', (5,20)))
 net_3.addPin(Pin('B3','N$3','Z', (50, 42)))
 
-nets.append(net_1)
+#nets.append(net_1)
 #nets.append(net_2)
-#nets.append(net_3)
+nets.append(net_3)
 map1 = Map(80, 50, cs, nets)
 
 start_time = time.time()
