@@ -3,9 +3,8 @@ Created on Sep 21, 2017
 
 @author: Carlos
 '''
-from __future__ import print_function
 import sys
-from email._header_value_parser import Terminal
+from collections import OrderedDict
 
 
 
@@ -22,14 +21,10 @@ class Map(object):
         self.components = components
         self.updateComponents()
 
-        #self.start_pins = [i[0] for i in nets]
-        #self.terminal_pins = [i[1] for i in nets]
-        #self.updatePins()
-        
         self.nets = nets
         self.updatePins()
         
-        self.traces = []
+        self.traces = OrderedDict({})
 
     def makeSpace(self, x, y):
         """returns a list of list (Python array) representing the map
@@ -67,7 +62,7 @@ class Map(object):
         # print ("end of add")
 
     def updatePins(self):
-        #allPins = self.start_pins + self.terminal_pins
+
         for net in self.nets:
             
             for pin in net.pins:
@@ -86,7 +81,6 @@ class Map(object):
         for i in range(c):
             self.addComponent(cs[i])
 
-        # print ("finshed for loop")
 
     def printComponents(self):
         for c in self.components: 
@@ -98,7 +92,7 @@ class Map(object):
         pin.extension = self.pin_e_length
 
     def addTrace(self, trace):
-        self.traces.append(trace)
+        self.traces[trace.code] = trace
 
 
 class Component(object):
@@ -135,7 +129,7 @@ class Pin(object):
         self.name = name
         self.net = net
         self.component = component
-        self.id = 0
+        self.routed = 0
         self.extension = 0  # Length of extension from component
         
         if net == 'GND':
@@ -185,6 +179,7 @@ class Net(object):
         self.traces = None
         self.bbox = None
         self.size = 0
+        self.routed = 0
     
     def addPin(self, pin):
         
@@ -200,12 +195,14 @@ class Trace(object):
        a net of 3+. 2. auxiliary trace, which connects a pin to a principal trace
        in a net of 3+.
        
-    lines -- line objects that make up the trace.
+    points -- points that make up the points on lines of the trace.
     """
     
-    def __init__(self, lines):
+    def __init__(self, points, code):
         
-        self.lines = lines
+        self.points = points
+        self.code = code 
+        self.pseudoPair = None
         
         
     def addLine(self, points):
@@ -236,4 +233,9 @@ class PseudoPair(object):
         self.terminal = terminal
         self.pinsInside = pinsInside
         self.netSize = netSize
+        self.trace = None
         
+    def addTrace(self, trace):
+        
+        self.trace = trace
+        self.trace.pseudoPair = self

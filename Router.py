@@ -10,6 +10,7 @@ from Map import Pin
 from Map import Trace
 from Map import Net
 from Map import PseudoPair
+from Map import Trace
 import sys
 import time
 
@@ -22,20 +23,7 @@ LEFT = 3
 def route(Map, outputFile):
     component_cushion = 2
     trace_cushion = 1
-    '''
-    for pin in Map.start_pins:
-        #print (pin.pos)
-        extendPin(Map, pin, 2)
-        print (pin.name, pin.extension)
-        #print (pin.pos)
-
-
-    for pin in Map.terminal_pins:
-        #print (pin.pos)
-        extendPin(Map, pin, 2)
-        print (pin.name, pin.extension)
-        #print (pin.pos)
-    '''
+  
     routed_dict = {}
     routed_amt = 0
     for net in Map.nets:
@@ -48,7 +36,7 @@ def route(Map, outputFile):
     #Net pre-processing (determining hub for 3+ nets, net bounding box order.)
     print (routed_dict)
     printMap(Map.space)
-    pseudoPairs = orderSets(Map)
+    #pseudoPairs = orderSets(Map)
 
     printMap(Map.space)
 
@@ -57,7 +45,12 @@ def route(Map, outputFile):
     #####################################################
     traces = []
     routedPairs = []
+    pseudoPairs = []
+    trace_code = 0
+    pseudoPairs = orderSets(Map)
+
     while routed_amt < len(routed_dict):
+                
         WorkMap = makeWorkMap(Map.space)
         
         pair = pseudoPairs.pop(0)
@@ -70,39 +63,87 @@ def route(Map, outputFile):
             tx = pair.terminal.x
             ty = pair.terminal.y
             
-            coords = (sx, sy, tx, ty)
-        
             WorkMap[sx][sy] = ' S'
             WorkMap[tx][ty] = ' T'
+            
+        #elif pair.type == "p2n":
 
         printMap(WorkMap)
 
-
+        #Add Cushiom
         print ("ADD CUSHION for set ", pair.pin.net.name )
-        WorkMap = addCushion(Map, component_cushion, WorkMap, pair.pin.net)
+        WorkMap = addCushion(Map, component_cushion, WorkMap, pair)
         printMap(WorkMap)
         print ("ADD TRACE CUSHION for set ", pair.pin.net.name)
-        WorkMap = addTraceCushion(traces, trace_cushion, WorkMap, coords)
+        WorkMap = addTraceCushion(Map, trace_cushion, WorkMap, pair)
         printMap(WorkMap)
-        iFound, WorkMap = bubble(pair.pin.pos, WorkMap)
-
+        
+        iFound, WorkMap = bubble(pair, WorkMap)
         printMap(WorkMap)
-
-        points = trace(pair.terminal.pos, iFound, WorkMap)
+        points = makeTrace(pair, iFound, WorkMap)
         #traces list needs more information for being able to remove
         # parts of traces that are ripped up
-        traces.append(points)
-        drawTrace(points, Map)
+        
+        new_trace = Trace(points, hex(trace_code))
+        pair.addTrace(new_trace)
+        Map.addTrace(new_trace)
+        trace_code += 1
+        drawTrace(new_trace, Map)
 
         printMap(Map.space)
 
-        sys.exit()
+        if pair.type == 'p2p':
+            pair.pin.routed = 1
+            pair.pin.net.routed += 1
+            pair.terminal.routed = 1
+            pair.terminal.net.routed += 1
+    
+        if pair.type == 'p2n':
+            pair.pin.routed = 1
+            pair.pin.net.routed += 1
+      
+        routedPairs.append(pair)
+        routed_amt += 2
+        #sys.exit()
 
     printMap(Map.space)
     printMapFile(Map.space, outputFile)
+    for trace in Map.traces.keys():
+        print (trace)
+        #print (len(Map.traces))
+        #print (trace.points)
+    for pair in routedPairs:
+        print(pair.pin.name)
+        print (pair.trace.points)
+        
+    point = (21,31) 
+    #deleteTrace(point, Map)
     
-
+    for trace in Map.traces.keys():
+        print (trace)
+    
+def deleteTrace(point, Map):
+    
+    trace_code = Map.space[point[0]][point[1]]
+    print (trace_code)
+    trace = Map.traces[trace_code]
+    
+    pair = trace.pseudoPair
+    
+    if pair.type == 'p2p':
+        pair.pin.routed = 0
+        pair.pin.net.routed -= 1
+        pair.terminal.routed = 0
+        pair.terminal.net.routed -= 1 
+    
+    if pair.type == 'p2n':
+        pair.pin.routed = 0
+        pair.pin.net.routed -= 1
+        
+    del Map.traces[trace_code]
+ 
 def makeNetQueue(netlist):
+    
     x= 2
     
     
@@ -116,13 +157,18 @@ def step(p1, p2):
     return step
 
 
-def addTraceCushion(traces, cushion, WorkMap, coords):
-
-    for points in traces:
+def addTraceCushion(MapInfo, cushion, WorkMap, pair):
+    
+    sx = pair.pin.x
+    sy = pair.pin.y
+    tx = pair.terminal.x
+    ty = pair.terminal.y
+    
+    for trace in MapInfo.traces.values():
         id = 0
-        while id < len(points) - 1:
-            start = points[id]
-            end = points[id+1]
+        while id < len(trace.points) - 1:
+            start = trace.points[id]
+            end = trace.points[id+1]
             p1 = (min(start[0],end[0]), min(start[1],end[1]))
             p2 = (max(start[0],end[0]), max(start[1],end[1]))
 
@@ -133,7 +179,7 @@ def addTraceCushion(traces, cushion, WorkMap, coords):
 
             for y in range(y_top, y_bottom):
                 for x in range(x_left, x_right):
-                    if (x, y) == (coords[0], coords[1]) or (x, y) == (coords[2], coords[3]):
+                    if (x, y) == (sx, sy) or (x, y) == (tx, ty):
                         WorkMap[x-1:x+1, y-1:y+1] = ' -'
                         continue
                     WorkMap[x][y] = ' o'
@@ -143,29 +189,31 @@ def addTraceCushion(traces, cushion, WorkMap, coords):
     return WorkMap
 
 
-def drawTrace(points, Map):
-    i = 0
+def drawTrace(trace, Map):
+    points = trace.points
     id = 0
     while id < len(points) - 1:
         current = points[id]
         next = points[id+1]
         for x in range(current[0], next[0] + step(current[0],next[0]) , step(current[0],next[0])):
             for y in range(current[1], next[1] + step(current[1], next[1]), step(current[1], next[1])):
-                Map.space[x][y] = 'c' +str(i+1)
+                Map.space[x][y] = trace.code
         id += 1
 
-    Map.space[points[0][0]][points[0][1]] = 'T' + str(i + 1)
-    Map.space[points[id][0]][points[id][1]] = 'S' + str(i + 1)
+    Map.space[trace.pseudoPair.pin.x][trace.pseudoPair.pin.y] = trace.pseudoPair.pin.name 
+    Map.space[trace.pseudoPair.terminal.x][trace.pseudoPair.terminal.y] = trace.pseudoPair.terminal.name 
+    #Map.space[points[0][0]][points[0][1]] = 'T' + str(i + 1)
+    #Map.space[points[id][0]][points[id][1]] = 'S' + str(i + 1)
 
 
-def addCushion(MapInfo, cushion, WorkMap, current_net):
+def addCushion(MapInfo, cushion, WorkMap, current_pair):
     """ Add a cushion to components of a certain amount of millimeters to
         avoid routing too close to components.
 
     MapInfo -- Map class object containing information about components.
     cushion -- int, millimeter amount of cushion to add to components.
     WorkMap -- list (Two-dimensional), array to add cushion to.
-    current_net -- net object currently being routed
+    current_pair -- pair object currently being routed
 
     WorkMap -- list (Two-dimensional), map space with cushion added to components.
     """
@@ -173,6 +221,9 @@ def addCushion(MapInfo, cushion, WorkMap, current_net):
     #Cushion Components
     '''This might need to only be done once at the beginning of routing process...
     '''
+    
+    current_net = current_pair.pin.net
+    
     for component in MapInfo.components:
         x_left = component.x - cushion
         x_right = component.x + component.x_size + cushion
@@ -203,7 +254,7 @@ def addCushion(MapInfo, cushion, WorkMap, current_net):
     return WorkMap
 
 
-def trace(end, label, Map):
+def makeTrace(pair, label, Map):
     """ Make a trace from a terminal (end) pin. This method is simply
         a wrapper for the main process, setDirection(), for making a
         trace thorugh a map given its full wave propagation map.
@@ -214,7 +265,7 @@ def trace(end, label, Map):
 
     tracepoints -- list of tuples containing coordinates of points on trace
     """
-
+    end = pair.terminal.pos
     tracePoints = setDirection(end, label, Map)
     print (tracePoints)
 
@@ -396,40 +447,60 @@ def orderSets(Map):
         pins = net.pins
         if len(pins) == 2:
             
+            if pins[0].routed:
+                continue
+            
             bbox_idx = calculatePinsInBBox(net, 0, 1, Map)
             pseudopair = PseudoPair("p2p",pins[0], pins[1], bbox_idx, net.size)
             pseudopairs.append(pseudopair)
             
         elif len(pins) > 2:
+            
             for i in range(len(pins)):
                 for j in range(i,len(pins)):
                     
-                    if pins[i] == pins[j]:
+                    if pins[i] == pins[j] or pins[i].routed:
                         continue
                     
                     bbox_idx = calculatePinsInBBox(net, i, j, Map)
                     pseudopair = PseudoPair("p2p",pins[i], pins[j], bbox_idx, net.size)
                     pseudopairs.append(pseudopair)
             
+    '''
     for pair in pseudopairs:
         print (pair.type, pair.pin.name, pair.terminal.name, pair.pinsInside, pair.netSize)
+    '''
     pseudopairs.sort(key=lambda bbox : bbox.pinsInside)        
-    for pair in pseudopairs:
-        print (pair.type, pair.pin.name, pair.terminal.name, pair.pinsInside, pair.netSize)
-                   
-    #sys.exit()
-    
+                                
     return pseudopairs
 
-    '''
-    for i in range(len(S)):
-        Map.space[S[i].x][S[i].y] = 'S' + str(i+1)
-        S[i].id = i
-        Map.space[T[i].x][T[i].y] = 'T' + str(i+1)
-        T[i].id = i
+
+def updateSets(net, pseudoPairs):
     
-    return S, T
-    '''
+    if net.routed == 2:
+        
+        pins = []
+        
+        for pin in net:
+            if len(pins) == 2:
+                break
+            if pin.routed:
+                pins.append(pin)
+                
+        #alternatively, since this is only the heuristic part
+        #this could be estimated using the left most, upmost, etc coord of the trace
+        findSTP(net, pins[0], pins[1])
+            
+            
+    #insert into PseudoPairs the found pairs.
+    
+def findSTP(net, pin1, pin2):
+    
+    #makes a map space with the area where optimal netting can be placed between to points
+    #on the iteration back label as T or whatever is the final value the algorithm searches
+    #for on the way back. 
+    
+    x =2
     
 def calculatePinsInBBox(net,p1,p2, Map):
     
@@ -535,7 +606,7 @@ def extendPin(Map, pin, e_length):
     pin.extension = e_length
 
 
-def bubble(start, Map):
+def bubble(pair, Map):
     """ Perform wave propagation portion of Lee Algorithm for routing.
 
     start -- Tuple containing coordinate of start Pin.
@@ -551,7 +622,7 @@ def bubble(start, Map):
     temp = []
     iteration_found_at = None
     workingPoints = []
-    workingPoints.append(start)
+    workingPoints.append(pair.pin.pos)
 
     while found is False:
 
@@ -623,7 +694,11 @@ def printMap(Map):
         else:
             print (str(x) + '  ', end='')
         for y in range(len(Map)):
-            print (Map[y][x], end='')
+            if len(Map[y][x]) == 2:
+                space = ' '
+            else:
+                space = ''
+            print (space + Map[y][x], end='')
         print()
         
 def printMapFile(Map, outputFile):
@@ -651,7 +726,12 @@ def printMapFile(Map, outputFile):
         else:
             outputFile.write(str(x) + '  ')
         for y in range(len(Map)):
-            outputFile.write(' ' + Map[y][x])
+            space  = None
+            if len(Map[y][x]) == 2:
+                space = ' '
+            else:
+                space = ''
+            outputFile.write(space + Map[y][x])
         outputFile.write('\n')
     
     
