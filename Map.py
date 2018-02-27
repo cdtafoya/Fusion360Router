@@ -176,7 +176,7 @@ class Net(object):
         
         self.name = name  
         self.pins = []
-        self.traces = None
+        self.traces = []
         self.bbox = None
         self.size = 0
         self.routed = 0
@@ -186,6 +186,19 @@ class Net(object):
         pin.net = self
         self.pins.append(pin)
         self.size += 1
+        
+    def sortPins(self):
+        
+        self.pins.sort(key=lambda pin : pin.routed, reverse=True)
+        
+    def addTrace(self, trace):
+        
+        self.traces.append(trace)
+
+    def deleteTrace(self, trace):
+        
+        self.traces.remove(trace)
+        
         
     
 class Trace(object):
@@ -198,20 +211,12 @@ class Trace(object):
     points -- points that make up the points on lines of the trace.
     """
     
-    def __init__(self, points, code):
+    def __init__(self, points, code, pair):
         
         self.points = points
         self.code = code 
         self.pseudoPair = None
         
-        
-    def addLine(self, points):
-        """Appends a line object to the list of lines that make up the trace.
-           Additionally checks to see if it is in order, that is whether the 
-           lines go from start to finish of the trace.
-           
-        points -- x,y coordinates contained in the line. 
-        """
     
 class PseudoPair(object):
     """PseudoPair objects can contain references to pins which may correspond to nets of 
@@ -239,3 +244,36 @@ class PseudoPair(object):
         
         self.trace = trace
         self.trace.pseudoPair = self
+        
+    def setRouted(self):
+        
+        if self.type == 'p2p':
+            
+            self.pin.routed = 1
+            self.pin.net.routed += 1
+            self.terminal.routed = 1
+            self.terminal.net.routed += 1
+            
+        if self.type == 'p2n':
+            self.pin.routed = 1
+            self.pin.net.routed += 1
+            
+        net = self.pin.net
+        net.sortPins()
+        
+    def unsetRouted(self):
+        
+        if self.type == 'p2p':
+            self.pin.routed = 0
+            self.pin.net.routed -= 1
+            self.terminal.routed = 0
+            self.terminal.net.routed -= 1
+            
+        if self.type == 'p2n':
+            self.pin.routed = 0
+            self.pin.net.routed -= 1
+            
+        net = self.pin.net
+        net.sortPins()
+
+        
