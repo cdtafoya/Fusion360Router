@@ -211,11 +211,12 @@ class Trace(object):
     points -- points that make up the points on lines of the trace.
     """
     
-    def __init__(self, points, code, pair):
+    def __init__(self, points, code, pair, net):
         
         self.points = points
         self.code = code 
         self.pseudoPair = None
+        self.net = net
         
     
 class PseudoPair(object):

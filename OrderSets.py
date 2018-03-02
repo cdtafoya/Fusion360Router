@@ -43,7 +43,7 @@ def orderSets(Map):
         mn_min = (-1, -1, 10000)
         pins = net.pins
         for i in range(len(pins)):
-            for j in range(i,len(pins)):
+            for j in range(i, len(pins)):
                 
                 if pins[i] == pins[j] or pins[i].routed:
                     continue
@@ -66,8 +66,7 @@ def orderSets(Map):
     pseudopairs.sort(key=lambda bbox : bbox.pinsInside)        
 
     for pair in pseudopairs:
-        print (pair.type, pair.pin.name, pair.terminal.name, pair.pinsInside, pair.netSize)
-
+        print(pair.type, pair.pin.name, pair.terminal.name, pair.pinsInside, pair.netSize)
     
     return pseudopairs
 

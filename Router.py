@@ -73,6 +73,11 @@ def route(Map, outputFile):
             
         #elif pair.type == "p2n":
 
+        if pair.type == "p2n":
+
+            WorkMap = OrderSets.setGoalPositions(pair.pin, WorkMap, pair.pin.net)
+            WorkMap[pair.pin.x][pair.pin.y] = ' S'
+
         MP.printMap(WorkMap)
 
         #Add Cushiom
@@ -90,7 +95,7 @@ def route(Map, outputFile):
         #traces list needs more information for being able to remove
         # parts of traces that are ripped up
         
-        new_trace = Trace(points, hex(trace_code), pair)
+        new_trace = Trace(points, hex(trace_code), pair, pair.pin.net)
         pair.addTrace(new_trace)
         Map.addTrace(new_trace)
         pair.pin.net.addTrace(new_trace)
@@ -109,6 +114,7 @@ def route(Map, outputFile):
 
     MP.printMap(Map.space)
     MP.printMapFile(Map.space, outputFile)
+
     for trace in Map.traces.keys():
         print (trace)
         #print (len(Map.traces))
@@ -118,7 +124,7 @@ def route(Map, outputFile):
         print (pair.trace.points)
         
     point = (21,31) 
-    #deleteTrace(point, Map)
+    deleteTrace(point, Map)
     
     for trace in Map.traces.keys():
         print (trace)
@@ -156,6 +162,10 @@ def addTraceCushion(MapInfo, cushion, WorkMap, pair):
     
     for trace in MapInfo.traces.values():
         id = 0
+
+        if trace.net == pair.pin.net:
+            continue
+
         while id < len(trace.points) - 1:
             start = trace.points[id]
             end = trace.points[id+1]
