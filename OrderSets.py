@@ -72,15 +72,17 @@ def orderSets(Map):
 
 
 def updateSets(net, pseudoPairs, Map):
-    print (net.name)
-    print (len(net.traces))
+    print(net.name)
+    print(len(net.traces))
+    print((net.routed))
 
-    if net.routed == 2:
-        
+    if net.routed >= 2 and net.routed < net.size:
+
         p1 = net.pins[0]
         p2 = net.pins[1]
-        p3 = net.pins[2]
-        
+        p3 = net.pins[net.routed]
+        print("PIN3 for UDATE: "+ str(p3.name))
+
         WorkMap1 = Router.makeWorkMap(Map.space)
         WorkMap1 = setGoalPositions(p3, WorkMap1, net)
         iFound, point_found, WorkMap = SA.bubble(p3, WorkMap1)
@@ -92,18 +94,16 @@ def updateSets(net, pseudoPairs, Map):
 
         pseudoPairs.sort(key=lambda bbox: bbox.pinsInside)
 
-        return pseudoPairs
+    return pseudoPairs
         
-        
+
 def setGoalPositions(start_pin, WorkMap,net):
-    
+
     for pin in net.pins:
         
         if pin == start_pin:
             continue
         
-        WorkMap[pin.x][pin.y] = ' T'
-    
     for trace in net.traces:
          
         points = trace.points

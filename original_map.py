@@ -108,7 +108,6 @@ to these pins.
 
 map1 = Map(80, 50, cs, nets)
 
-Router.printMap(map1.space)
 start_time = time.time()
 Router.route(map1, "router_output.txt")
 print("--- %s seconds ---" % (time.time() - start_time))

@@ -4,18 +4,11 @@ Created on Sep 28, 2017
 @author: Carlos
 '''
 
-from Map import Map
-from Map import Component
-from Map import Pin
-from Map import Trace
-from Map import Net
-from Map import PseudoPair
 from Map import Trace
 import MapPrinter as MP
 import SearchAlgorithms as SA
 import OrderSets
 import sys
-import time
 
 UP = 0
 RIGHT = 1
@@ -37,30 +30,30 @@ def route(Map, outputFile):
             routed_dict[pin.component+pin.name] = 0
         
     
-    #Net pre-processing (determining hub for 3+ nets, net bounding box order.)
     print (routed_dict)
-    MP.printMap(Map.space)
-    #pseudoPairs = orderSets(Map)
-
     MP.printMap(Map.space)
 
     #####################################################
     # Rotuing process
     #####################################################
-    traces = []
     routedPairs = []
-    pseudoPairs = []
     trace_code = 0
     pseudoPairs = OrderSets.orderSets(Map)
     
-
     while routed_amt < len(routed_dict):
                 
         WorkMap = makeWorkMap(Map.space)
         
+        for pair in pseudoPairs:
+            pair.printPair()
+
         pair = pseudoPairs.pop(0)
-        print ( pair.type, pair.pin.name, pair.terminal.name, pair.pinsInside, pair.netSize)
-        
+        print("BEGIN ROUTING:")
+        print(pair.type, pair.pin.name, pair.terminal.name, pair.pinsInside, pair.netSize)
+
+        ################################################
+        # Setting up map for routing.
+        ################################################
         if pair.type == "p2p":
             
             sx = pair.pin.x
@@ -71,10 +64,9 @@ def route(Map, outputFile):
             WorkMap[sx][sy] = ' S'
             WorkMap[tx][ty] = ' T'
             
-        #elif pair.type == "p2n":
+        elif pair.type == "p2n":
 
-        if pair.type == "p2n":
-
+            #This could potentially be done by STP procedure
             WorkMap = OrderSets.setGoalPositions(pair.pin, WorkMap, pair.pin.net)
             WorkMap[pair.pin.x][pair.pin.y] = ' S'
 
@@ -83,18 +75,21 @@ def route(Map, outputFile):
         #Add Cushiom
         print ("ADD CUSHION for set ", pair.pin.net.name )
         WorkMap = addCushion(Map, component_cushion, WorkMap, pair.pin.net)
-        MP.printMap(WorkMap)
+        #MP.printMap(WorkMap)
         print ("ADD TRACE CUSHION for set ", pair.pin.net.name)
         WorkMap = addTraceCushion(Map, trace_cushion, WorkMap, pair)
-        MP.printMap(WorkMap)
-        
-        iFound, _ ,  WorkMap = SA.bubble(pair.pin, WorkMap)
+        #MP.printMap(WorkMap)
+
+
+        ################################################
+        # Search Algorithms Portion
+        ################################################
+        iFound, end_position,  WorkMap = SA.bubble(pair.pin, WorkMap)
         print ("IFOUND: " + str(iFound))
-        MP.printMap(WorkMap)
-        points = makeTrace(pair, iFound, WorkMap)
-        #traces list needs more information for being able to remove
-        # parts of traces that are ripped up
-        
+        #MP.printMap(WorkMap)
+        points = makeTrace(end_position, iFound, WorkMap)
+
+
         new_trace = Trace(points, hex(trace_code), pair, pair.pin.net)
         pair.addTrace(new_trace)
         Map.addTrace(new_trace)
@@ -105,26 +100,33 @@ def route(Map, outputFile):
         MP.printMap(Map.space)
 
         pair.setRouted()
+
+        ################################################
+        # Update pseudoPairs
+        ################################################
         if pair.netSize > 2:
+            print("REORDER NETS: ")
             pseudoPairs = OrderSets.updateSets(pair.pin.net, pseudoPairs, Map)
+            print(len(pseudoPairs))
         
         routedPairs.append(pair)
-        routed_amt += 2
-        #sys.exit()
+
+        if pair.type == 'p2p':
+            routed_amt += 2
+        else:
+            routed_amt += 1
 
     MP.printMap(Map.space)
     MP.printMapFile(Map.space, outputFile)
 
     for trace in Map.traces.keys():
         print (trace)
-        #print (len(Map.traces))
-        #print (trace.points)
     for pair in routedPairs:
-        print(pair.pin.name)
+        print(pair.pin.name + " to " + pair.terminal.name)
         print (pair.trace.points)
         
     point = (21,31) 
-    deleteTrace(point, Map)
+    #deleteTrace(point, Map)
     
     for trace in Map.traces.keys():
         print (trace)
@@ -157,8 +159,13 @@ def addTraceCushion(MapInfo, cushion, WorkMap, pair):
     
     sx = pair.pin.x
     sy = pair.pin.y
-    tx = pair.terminal.x
-    ty = pair.terminal.y
+
+    if pair.type == "p2p":
+        tx = pair.terminal.x
+        ty = pair.terminal.y
+    else:
+        tx = 0
+        ty = 0
     
     for trace in MapInfo.traces.values():
         id = 0
@@ -200,10 +207,10 @@ def drawTrace(trace, Map):
                 Map.space[x][y] = trace.code
         id += 1
 
-    Map.space[trace.pseudoPair.pin.x][trace.pseudoPair.pin.y] = trace.pseudoPair.pin.name 
-    Map.space[trace.pseudoPair.terminal.x][trace.pseudoPair.terminal.y] = trace.pseudoPair.terminal.name 
-    #Map.space[points[0][0]][points[0][1]] = 'T' + str(i + 1)
-    #Map.space[points[id][0]][points[id][1]] = 'S' + str(i + 1)
+    Map.space[trace.pseudoPair.pin.x][trace.pseudoPair.pin.y] = trace.pseudoPair.pin.name
+
+    if trace.pseudoPair.type == "p2p":
+        Map.space[trace.pseudoPair.terminal.x][trace.pseudoPair.terminal.y] = trace.pseudoPair.terminal.name
 
 
 def addCushion(MapInfo, cushion, WorkMap, current_net):
@@ -221,10 +228,6 @@ def addCushion(MapInfo, cushion, WorkMap, current_net):
     #Cushion Components
     '''This might need to only be done once at the beginning of routing process...
     '''
-    
-    #current_net = current_pair.pin.net
-    print (current_net.name)
-    
     for component in MapInfo.components:
         x_left = component.x - cushion
         x_right = component.x + component.x_size + cushion
@@ -255,7 +258,7 @@ def addCushion(MapInfo, cushion, WorkMap, current_net):
     return WorkMap
 
 
-def makeTrace(pair, label, Map):
+def makeTrace(end, label, Map):
     """ Make a trace from a terminal (end) pin. This method is simply
         a wrapper for the main process, setDirection(), for making a
         trace thorugh a map given its full wave propagation map.
@@ -266,7 +269,6 @@ def makeTrace(pair, label, Map):
 
     tracepoints -- list of tuples containing coordinates of points on trace
     """
-    end = pair.terminal.pos
     tracePoints = setDirection(end, label, Map)
     print (tracePoints)
 
@@ -304,9 +306,9 @@ def setDirection(turnPoint, label, Map):
         #if Map[startX][startY][0] is not ' ':
         #    continue
 
-        if actualLabel == 'S':
+        if actualLabel == ' S':
             print ("Goal found in setDirection()")
-            tracePoints.append((startX, startY))
+            #tracePoints.append((startX, startY))
             break
 
         if startX == -1:
@@ -360,7 +362,7 @@ def line(dir, current, label, Map):
         nextX, nextY = getNextPos(dir, current, Map)
         nextLabel = Map[nextX][nextY]
 
-        if nextLabel is 'S':
+        if nextLabel == ' S':
             tracePoints.append((nextX, nextY))  # uncomment to include S point
             return tracePoints, True  # return points collected and goalFound = True
 
@@ -413,9 +415,6 @@ def getNextPos(dir, cur, Map):
         return -1, -1
 
     return nextX, nextY
-
-
-
 
 
 def makeWorkMap(Map):

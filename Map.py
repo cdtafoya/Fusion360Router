@@ -130,8 +130,7 @@ class Pin(object):
         self.net = net
         self.component = component
         self.routed = 0
-        self.extension = 0  # Length of extension from component
-        
+
         if net == 'GND':
             self.pos = None
             self.x = None
@@ -143,9 +142,6 @@ class Pin(object):
         
         self.oppos = None  # Points to Pin object that this Pin must connect to
         self.attached = True  # Pin is attached to component
-
-    def setExtension(self, direction):
-        self.extension = direction
 
     def setPosition(self, position):
         self.pos = position
@@ -242,7 +238,6 @@ class PseudoPair(object):
         self.trace = None
         
     def addTrace(self, trace):
-        
         self.trace = trace
         self.trace.pseudoPair = self
         
@@ -276,5 +271,10 @@ class PseudoPair(object):
             
         net = self.pin.net
         net.sortPins()
+
+
+    def printPair(self):
+
+        print(self.type, self.pin.name, self.terminal.name, self.pinsInside, self.netSize)
 
         
