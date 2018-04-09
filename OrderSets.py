@@ -113,7 +113,7 @@ def setGoalPositions(start_pin, WorkMap,net):
             next = points[id+1]
             for x in range(current[0], next[0] + step(current[0],next[0]) , step(current[0],next[0])):
                 for y in range(current[1], next[1] + step(current[1], next[1]), step(current[1], next[1])):
-                    WorkMap[x][y] = ' T'
+                    WorkMap[x][y] = 'T'
             id += 1
             
     MP.printMap(WorkMap)

@@ -25,7 +25,7 @@ def route(Map, outputFile):
     routed_amt = 0
     for net in Map.nets:
         for pin in net.pins:
-            extendPin(Map, pin, 2)
+            #extendPin(Map, pin, 2)
             #make routed dictionary
             routed_dict[pin.component+pin.name] = 0
         
@@ -61,23 +61,23 @@ def route(Map, outputFile):
             tx = pair.terminal.x
             ty = pair.terminal.y
             
-            WorkMap[sx][sy] = ' S'
-            WorkMap[tx][ty] = ' T'
+            WorkMap[sx][sy] = 'S'
+            WorkMap[tx][ty] = 'T'
             
         elif pair.type == "p2n":
 
             #This could potentially be done by STP procedure
             WorkMap = OrderSets.setGoalPositions(pair.pin, WorkMap, pair.pin.net)
-            WorkMap[pair.pin.x][pair.pin.y] = ' S'
+            WorkMap[pair.pin.x][pair.pin.y] = 'S'
 
         MP.printMap(WorkMap)
 
         #Add Cushiom
         print ("ADD CUSHION for set ", pair.pin.net.name )
-        WorkMap = addCushion(Map, component_cushion, WorkMap, pair.pin.net)
+        #WorkMap = addCushion(Map, component_cushion, WorkMap, pair.pin.net)
         #MP.printMap(WorkMap)
         print ("ADD TRACE CUSHION for set ", pair.pin.net.name)
-        WorkMap = addTraceCushion(Map, trace_cushion, WorkMap, pair)
+        #WorkMap = addTraceCushion(Map, trace_cushion, WorkMap, pair)
         #MP.printMap(WorkMap)
 
 
@@ -187,9 +187,9 @@ def addTraceCushion(MapInfo, cushion, WorkMap, pair):
             for y in range(y_top, y_bottom):
                 for x in range(x_left, x_right):
                     if (x, y) == (sx, sy) or (x, y) == (tx, ty):
-                        WorkMap[x-1:x+1, y-1:y+1] = ' -'
+                        WorkMap[x-1:x+1, y-1:y+1] = '-'
                         continue
-                    WorkMap[x][y] = ' o'
+                    WorkMap[x][y] = 'o'
 
             id += 1
 
@@ -236,7 +236,7 @@ def addCushion(MapInfo, cushion, WorkMap, current_net):
 
         for y in range(y_top, y_bottom):
             for x in range(x_left, x_right):
-                WorkMap[x][y] = ' o'
+                WorkMap[x][y] = 'o'
 
     #Cushion Pins
     for net in MapInfo.nets:
@@ -253,7 +253,7 @@ def addCushion(MapInfo, cushion, WorkMap, current_net):
  
             for y in range(y_top, y_bottom + 1):
                 for x in range(x_left, x_right + 1):
-                    WorkMap[x][y] = ' o'
+                    WorkMap[x][y] = 'o'
  
     return WorkMap
 
@@ -306,7 +306,7 @@ def setDirection(turnPoint, label, Map):
         #if Map[startX][startY][0] is not ' ':
         #    continue
 
-        if actualLabel == ' S':
+        if actualLabel == 'S':
             print ("Goal found in setDirection()")
             #tracePoints.append((startX, startY))
             break
@@ -362,7 +362,7 @@ def line(dir, current, label, Map):
         nextX, nextY = getNextPos(dir, current, Map)
         nextLabel = Map[nextX][nextY]
 
-        if nextLabel == ' S':
+        if nextLabel == 'S':
             tracePoints.append((nextX, nextY))  # uncomment to include S point
             return tracePoints, True  # return points collected and goalFound = True
 
@@ -467,7 +467,7 @@ def findPinWall(Map, pin):
     right = 0
 
     for i, each in enumerate(surrounding):
-        if each == ' o':
+        if each == 'o':
             if i == 0 or i == 1 or i == 2:
                 up += 1
             if i == 2 or i == 5 or i == 8:
@@ -504,13 +504,13 @@ def extendPin(Map, pin, e_length):
 
     for i in range(0, e_length):
         if extendDir == UP:
-            Map.space[pin.x][pin.y - i] = ' o'
+            Map.space[pin.x][pin.y - i] = 'o'
         elif extendDir == RIGHT:
-            Map.space[pin.x + i][pin.y] = ' o'
+            Map.space[pin.x + i][pin.y] = 'o'
         elif extendDir == DOWN:
-            Map.space[pin.x][pin.y + i] = ' o'
+            Map.space[pin.x][pin.y + i] = 'o'
         elif extendDir == LEFT:
-            Map.space[pin.x - i][pin.y] = ' o'
+            Map.space[pin.x - i][pin.y] = 'o'
 
     if extendDir == 0:
             pin.setY(pin.y - e_length)

@@ -1,94 +1,69 @@
-'''
-Created on Jan 3, 2018
+# Python program for Dijkstra's single
+# source shortest path algorithm. The program is
+# for adjacency matrix representation of the graph
 
-@author: cdtafoya
-'''
-from Map import Component
-from Map import Map
-from Map import Pin
-from collections import OrderedDict
-import Router
-from unittest.test.testmock.support import SomeClass
+# Library for INT_MAX
+import sys
 
-class Trace(object):
+class Graph():
+
+    def __init__(self, vertices):
+        self.V = vertices
+        self.graph = [[0 for column in range(vertices)]
+                    for row in range(vertices)]
+
+    def printSolution(self, dist):
+        print ("Vertex tDistance from Source")
+        for node in range(self.V):
+            print (node,"t",dist[node])
+
+    # A utility function to find the vertex with
+    # minimum distance value, from the set of vertices
+    # not yet included in shortest path tree
+    def minDistance(self, dist, sptSet):
+
+        # Initilaize minimum distance for next node
+        min = float("inf")
     
-    def __init__(self, points):
-        self.points = points
-'''
-When initializing nets and pins. should be:
-The simpler XML will contain the name of each net.
-So each net should be initilied.
+        min_index = None
 
-net1 = Net('N$1') etc.
-nets.append(net1)
+        # Search not nearest vertex not in the
+        # shortest path tree
+        for v in range(self.V):
+            if dist[v] < min and sptSet[v] == False:
+                min = dist[v]
+                min_index = v
 
-then each pin is initialized and added to its repsective net.
+        return min_index
 
-pin1 = Pin('GND', Component (could be string or pointer to actual component object),
-          (x1, y1))
-net1.addPin(pin1)
+    # Funtion that implements Dijkstra's single source
+    # shortest path algorithm for a graph represented
+    # using adjacency matrix representation
+    def dijkstra(self, src):
 
+        dist = [float("inf")] * self.V
+        dist[src] = 0
+        sptSet = [False] * self.V
 
+        for cout in range(self.V):
 
-'''
+            # Pick the minimum distance vertex from
+            # the set of vertices not yet processed.
+            # u is always equal to src in first iteration
+            u = self.minDistance(dist, sptSet)
 
-p1 = (0,0,3)
-p2 = (0,0,1)
-p3 = (0,0,2)
-li = []
-li.append(p1)
-li.append(p2)
-li.append(p3)
-print (li)
-li.sort(key=lambda pseudoPin : pseudoPin[2])
-print (li)
+            # Put the minimum distance vertex in the
+            # shotest path tree
+            sptSet[u] = True
 
-s1 = Trace([p1,p2])
-s2 = Trace([p3,p2])
+            # Update dist value of the adjacent vertices
+            # of the picked vertex only if the current
+            # distance is greater than new distance and
+            # the vertex in not in the shotest path tree
+            for v in range(self.V):
+                if self.graph[u][v] > 0 and sptSet[v] == False and dist[v] > (dist[u] + self.graph[u][v]):
+                        dist[v] = dist[u] + self.graph[u][v]
 
-ss = []
-ss.append(s1)
-ss.append(s2)
+        self.printSolution(dist)
 
-for i in ss:
-    print( i)
-    
-s1.points = None
-print (s1.points)
-
-for i in ss:
-    print( i)
-    
-d = {'banana': 3, 'apple': 4, 'pear': 1, 'orange': 2}
-
-# dictionary sorted by key
-dn = OrderedDict(sorted(d.items(), key=lambda t: t[0]))
-#fn ={}
-fn = OrderedDict({})
-fn['bla'] = p1
-fn['bla2'] = p2
-fn['bla3'] = p3
-fn['bla4'] = p2
-
-#print (fn[0])
-
-for d in range(len(fn)):
-    print (fn.popitem(last=False))
-
-
-trace_d = {}
-trace_d[s1] = s2
-trace_d[s2] = s1
-
-ss.pop(s2)
-
-
-
-
-
-
-
-
-
-
-
+# This code is contributed by Divyanshu Mehta

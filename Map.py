@@ -39,7 +39,7 @@ class Map(object):
         for i in range(x):
             space.append([])
             for j in range(y):
-                space[i].append(' -')
+                space[i].append('-')
             
         return space
     
@@ -49,7 +49,7 @@ class Map(object):
 
         if (c.x + c.x_size > self.x_size or
             c.y + c.y_size > self.y_size):
-
+            print (c.x, c.x_size, c.y, c.y_size, self.x_size)
             raise ValueError('Component trying to be added of size ' + str(c.size) + 
                               ' does not fit at position ' + str(c.pos) + 
                                '\n in map of size ' + str(self.space.shape))
@@ -67,7 +67,7 @@ class Map(object):
             
             for pin in net.pins:
                 
-                if self.space[pin.x][pin.y] == ' o':
+                if self.space[pin.x][pin.y] == 'o':
                     raise  ValueError('Pin' +str(pin.name)+ "with position " +str(pin.pos)+
                                       ' cannot be placed on existing obstacle')
     
@@ -107,10 +107,10 @@ class Component(object):
         self.pos = position  # position of top right cell
         self.x = position[0]
         self.y = position[1]
-        self.letter = ' o'
+        self.letter = 'o'
 
     def setLetter(self, letter):
-        self.letter = ' ' + str(letter)
+        self.letter = str(letter)
 
     def setPosition(self, position):
         self.position = position

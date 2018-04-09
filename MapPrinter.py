@@ -31,13 +31,13 @@ def printMap(Map):
         else:
             print (str(x) + '  ', end='')
         for y in range(len(Map)):
-            if len(Map[y][x]) == 1:
+            if len(str(Map[y][x])) == 1:
                 space = '  '
-            elif len(Map[y][x]) == 2:
+            elif len(str(Map[y][x])) == 2:
                 space = ' '
             else:
                 space = ''
-            print (space + Map[y][x], end='')
+            print (space + str(Map[y][x]), end='')
         print()
         
 def printMapFile(Map, outputFile):

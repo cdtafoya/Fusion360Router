@@ -36,6 +36,7 @@ net_9 = Net('N$9')
 
 net_1.addPin(Pin('S1','N$1','X', (14, 20)))
 net_1.addPin(Pin('T1','N$1','X', (34, 29)))
+net_1.addPin(Pin('R1','N$1','X', (24, 40)))
 
 net_2.addPin(Pin('S2','N$2','X', (14, 25)))
 net_2.addPin(Pin('T2','N$2','X', (34, 31)))
@@ -62,7 +63,7 @@ net_9.addPin(Pin('S9','N$9','X',(59,  5)))
 net_9.addPin(Pin('T9','N$9','X', (57,  2)))
 
 nets = []
-nets.append((net_1))
+#nets.append((net_1))
 nets.append((net_2))
 nets.append((net_3))
 nets.append((net_4))
